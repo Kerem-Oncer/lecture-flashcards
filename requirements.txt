@@ -1,0 +1,6 @@
+streamlit
+anthropic
+pypdf
+pydantic
+genanki
+pandas
