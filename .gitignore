@@ -2,3 +2,6 @@
 .streamlit/secrets.toml
 __pycache__/
 CLAUDE.md
+.agents/
+.claude/
+AGENTS.md
