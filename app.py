@@ -6,7 +6,7 @@ import streamlit as st
 from pypdf import PdfReader
 
 from exporters import clean_cards, to_apkg, to_csv
-from generator import MAX_INPUT_CHARS, generate_cards
+from generator import MAX_CHUNKS, chunk_text, generate_cards
 
 # Current Claude model IDs (docs.claude.com models overview, checked 2026-11-09):
 #   Haiku 5.5:  "claude-haiku-5-5"   from $0.10 input / $0.50 output per million tokens
@@ -91,16 +91,32 @@ if source_text:
     st.write(f"**{len(source_text):,} characters** from {active_tab}")
     with st.expander(f"Preview (first {PREVIEW_CHARS:,} characters)"):
         st.text(source_text[:PREVIEW_CHARS])
-    if len(source_text) > MAX_INPUT_CHARS:
-        st.info(f"Only the first {MAX_INPUT_CHARS:,} characters will be used for now.")
+    chunk_count = len(chunk_text(source_text))
+    if chunk_count > MAX_CHUNKS:
+        st.info(
+            f"These notes split into {chunk_count} chunks. Only the first {MAX_CHUNKS} "
+            "will be used, to keep each request's cost down."
+        )
 
 if st.button("Generate flashcards", disabled=not source_text):
-    with st.spinner("Generating flashcards from 1 chunk..."):
+    progress = st.progress(0.0, text="Splitting notes into chunks...")
+
+    def show_progress(done: int, total: int) -> None:
+        label = "chunk" if total == 1 else "chunks"
+        progress.progress(done / total, text=f"Generated cards for {done} of {total} {label}...")
+
+    with st.spinner("Generating flashcards..."):
         try:
-            cards = generate_cards(source_text, num_cards, difficulty, course_name.strip())
+            cards, warnings = generate_cards(
+                source_text, num_cards, difficulty, course_name.strip(), on_progress=show_progress
+            )
         except Exception as error:
+            progress.empty()
             st.error(str(error))
         else:
+            progress.empty()
+            for warning in warnings:
+                st.warning(warning)
             cards_df = pd.DataFrame([card.model_dump() for card in cards])
             st.session_state["cards"] = cards_df
             # The editor must keep the same input between reruns. Passing it its own

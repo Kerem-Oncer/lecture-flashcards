@@ -18,7 +18,8 @@ Extract text (pypdf) → LLM generates JSON (Claude API) → validated with pyda
 - **Schema validation with retry:** every response is validated against a pydantic schema. On failure, the exact error goes back to the model for one retry, and a second failure shows a clear error.
 - **Human review before export:** cards land in an editable table, so nothing reaches a study deck without a chance to fix or delete it.
 - **Stable genanki IDs:** a fixed note type ID, a deck ID hashed from the deck name, and note GUIDs based on the card front mean re-importing updates cards instead of duplicating them.
-- **API key and cost control:** the key lives in Streamlit secrets and is never committed, and each request is capped at 40 cards.
+- **Chunking for long notes:** text is split into chunks of about 6,000 characters on paragraph boundaries. Cards are allotted to each chunk by its length, the chunks are sent to Claude in parallel (4 at a time), and the results are merged in document order with duplicate questions removed. A chunk that fails validation twice is skipped with a warning, while an API key or rate-limit error stops the whole run.
+- **API key and cost control:** the key lives in Streamlit secrets and is never committed, and each request is capped at 40 cards and 10 chunks (about 60,000 characters).
 
 ## Results
 
@@ -26,7 +27,7 @@ Generated 10 cards from 1 page of HST 102 notes in about 15 seconds, versus abou
 
 ## Limitations and next steps
 
-- Long notes are truncated to about 6,000 characters. Chunking is planned.
+- Notes longer than about 60,000 characters are cut off at 10 chunks.
 - There is no OCR, so scanned slides can't be read.
 - Card types are sometimes mislabeled.
 - A quiz mode and spaced repetition are planned.
