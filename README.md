@@ -24,13 +24,13 @@ Turn messy lecture notes, PDFs, and YouTube transcripts into source-grounded fla
 - **Schema validation with retry:** every response must match a pydantic schema; on failure the exact error goes back to the model once, and a second failure shows a clear error.
 - **Plan-then-write coverage, checked in code:** pydantic rejects any card whose topic isn't in the planned list, and the code requests cards for uncovered topics. Prompting alone didn't guarantee coverage.
 - **Custom instructions treated as untrusted input:** the optional instructions are capped at 500 characters, sent in their own tagged block, and ranked below the core rules, so they can narrow focus but can't add outside facts or drop source quotes.
-- **Cost control:** the API key lives in Streamlit secrets, and each request is capped at 80 cards in Auto mode, 40 in Custom, and 20 chunks (about 60,000 characters). Tags are built in code rather than by the model, and replies are requested as minified JSON to save output tokens.
-- **Per-run stats:** every API call records its tokens, duration, and type (first, retry, or follow-up), and each run shows its total time, token counts, and estimated cost.
+- **Cost control:** the API key lives in Streamlit secrets, and each request is capped at 80 cards in Auto mode, 40 in Custom, and 20 chunks (about 60,000 characters). Tags are built in code rather than by the model.
+- **Per-run stats:** every API call records its tokens, duration, and type (first, retry, or follow-up), and each run shows its total time, token counts, and estimated cost. Open the app with `?debug=1` to see them.
 - **Study view with escaped card text:** card text comes from the LLM and uploaded notes, so it reaches the page as escaped JSON and is set with `textContent`, never `innerHTML`.
 
 ## Results
 
-- **HST 102 (19 slides), Auto mode:** 39 cards in 25.7 s for about $0.006 (3,307 input / 11,797 output tokens). Balancing chunk sizes and running them in parallel cut generation time from 41 s to 25.7 s.
+- **HST 102 (19 slides), Auto mode:** balancing chunk sizes and running them in parallel cut generation time from 41 s to 25.7 s.
 - **CSE 220 (28 pages, 8,883 characters):** content from the second half of the document is now covered; the original 6,000-character limit dropped it.
 
 ## Limitations and next steps

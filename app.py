@@ -207,7 +207,8 @@ if st.button("Generate flashcards", disabled=not source_text):
 
 if "cards_editor_input" in st.session_state:
     st.subheader("Your cards")
-    if "run_stats" in st.session_state:
+    # Benchmark stats are still measured on every run, but shown only with ?debug=1.
+    if "run_stats" in st.session_state and st.query_params.get("debug") == "1":
         st.caption(st.session_state["run_stats"])
     coverage = st.session_state.get("coverage")
     if coverage and coverage["topics"]:
