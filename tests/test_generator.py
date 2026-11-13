@@ -11,6 +11,7 @@ import generator
 from generator import (
     CHUNK_CHARS,
     INPUT_PRICE_PER_M,
+    MAX_AUTO_CARDS,
     MAX_CARDS,
     OUTPUT_PRICE_PER_M,
     generate_cards,
@@ -109,6 +110,7 @@ def test_missing_topics_trigger_one_follow_up_and_cards_are_added(fake_claude):
     assert "minified JSON" in follow_up and '{"cards":[...]}' in follow_up
     assert [c.topic for c in result.cards] == topics
     assert result.covered == set(topics)
+    assert not result.cap_limited  # 3 topics < 80 cards.
 
 
 def test_failed_follow_up_keeps_existing_cards_without_retrying(fake_claude):
@@ -123,6 +125,7 @@ def test_failed_follow_up_keeps_existing_cards_without_retrying(fake_claude):
     assert len(fake.calls) == 2
     assert [c.topic for c in result.cards] == ["Mitosis"]
     assert result.covered == {"Mitosis"}
+    assert not result.cap_limited  # Uncovered because the follow-up failed, not the cap.
 
 
 def test_custom_mode_with_fewer_cards_than_topics_skips_follow_up(fake_claude):
@@ -138,22 +141,60 @@ def test_custom_mode_with_fewer_cards_than_topics_skips_follow_up(fake_claude):
     assert len(result.cards) == 5
     assert result.topics == topics
     assert set(topics) - result.covered == {"Topic 5", "Topic 6", "Topic 7"}
+    assert result.cap_limited  # 8 topics > 5-card target.
 
 
-def test_auto_mode_caps_cards_at_max_across_two_chunks(fake_claude):
+def test_auto_mode_allows_up_to_80_cards_across_two_chunks(fake_claude):
+    # 45 topics per chunk: 30 cards first, then a follow-up fills each 40-card budget.
     def handler(messages):
         prefix = "A" if "CHUNK_ONE" in messages[0]["content"] else "B"
-        topics = [f"{prefix} topic {i}" for i in range(30)]
+        topics = [f"{prefix} topic {i}" for i in range(45)]
         if is_follow_up(messages):
-            return json.dumps({"cards": [card(topic) for topic in topics[15:]]})
-        return reply(topics, [card(topic) for topic in topics[:15]])
+            return json.dumps({"cards": [card(topic) for topic in topics[30:]]})
+        return reply(topics, [card(topic) for topic in topics[:30]])
 
     fake = fake_claude(handler)
     result = generate_cards(two_chunk_text(), 5, "intro", "", auto=True)
 
     assert len(generator.chunk_text(two_chunk_text())) == 2
+    assert "at most 40 cards" in fake.calls[0][0]["content"]  # 80 split by length.
     assert len(fake.calls) == 4  # One request and one follow-up per chunk.
-    assert len(result.cards) == MAX_CARDS
+    assert len(result.cards) == MAX_AUTO_CARDS == 80
+    assert result.cap_limited  # 90 topics > 80 cards.
+
+
+def test_auto_mode_never_exceeds_80_cards_when_the_model_writes_too_many(fake_claude):
+    def handler(messages):
+        prefix = "A" if "CHUNK_ONE" in messages[0]["content"] else "B"
+        topics = [f"{prefix} topic {i}" for i in range(60)]
+        return reply(topics, [card(topic) for topic in topics])  # 60 cards per chunk.
+
+    fake = fake_claude(handler)
+    result = generate_cards(two_chunk_text(), 5, "intro", "", auto=True)
+
+    assert len(fake.calls) == 2  # Budgets are full, so no follow-ups.
+    assert len(result.cards) == MAX_AUTO_CARDS
+    assert result.cap_limited
+
+
+def test_single_chunk_in_auto_mode_gets_the_whole_80_card_budget(fake_claude):
+    fake = fake_claude(lambda messages: reply(["TCP"], [card("TCP")]))
+
+    result = generate_cards("Short notes.", 5, "intro", "", auto=True)
+
+    assert "at most 80 cards" in fake.calls[0][0]["content"]
+    assert not result.cap_limited  # 1 topic fits easily.
+
+
+def test_custom_mode_still_caps_at_40_cards(fake_claude):
+    topics = [f"Topic {i}" for i in range(60)]
+    fake = fake_claude(lambda messages: reply(topics, [card(topic) for topic in topics]))
+
+    result = generate_cards("Short notes.", 100, "intro", "", auto=False)
+
+    assert "Create exactly 40 cards" in fake.calls[0][0]["content"]
+    assert len(result.cards) == MAX_CARDS == 40
+    assert result.cap_limited
 
 
 def test_topics_merge_and_dedupe_across_chunks_in_document_order(fake_claude):

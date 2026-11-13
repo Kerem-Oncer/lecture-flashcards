@@ -6,7 +6,14 @@ import streamlit as st
 from pypdf import PdfReader
 
 from exporters import clean_cards, to_apkg, to_csv
-from generator import MAX_CARDS, MAX_CHUNKS, MAX_INSTRUCTION_CHARS, chunk_text, generate_cards
+from generator import (
+    MAX_AUTO_CARDS,
+    MAX_CARDS,
+    MAX_CHUNKS,
+    MAX_INSTRUCTION_CHARS,
+    chunk_text,
+    generate_cards,
+)
 from study import build_study_html
 
 # Current Claude model IDs (docs.claude.com models overview, checked 2026-11-09):
@@ -63,7 +70,10 @@ def format_run_stats(result) -> str:
 
 st.set_page_config(page_title="Lecture to Flashcards", page_icon="🗂️")
 st.title("Lecture → Flashcards")
-st.caption(f"Uses the developer’s API key — max {MAX_CARDS} cards per request.")
+st.caption(
+    f"Uses the developer’s API key: up to {MAX_AUTO_CARDS} cards in Auto, "
+    f"{MAX_CARDS} in Custom."
+)
 
 with st.sidebar:
     st.header("Settings")
@@ -71,10 +81,10 @@ with st.sidebar:
     card_count_mode = st.radio("Card count", [AUTO_MODE, CUSTOM_MODE])
     st.caption(
         "Claude lists every topic in your notes, then writes one card per topic "
-        f"(max {MAX_CARDS})."
+        f"(max {MAX_AUTO_CARDS})."
     )
     auto_mode = card_count_mode == AUTO_MODE
-    num_cards = MAX_CARDS
+    num_cards = MAX_CARDS  # Ignored in Auto mode, which uses MAX_AUTO_CARDS.
     if not auto_mode:
         num_cards = st.slider("Number of cards", min_value=5, max_value=MAX_CARDS, value=10)
     difficulty = st.selectbox("Difficulty", ["intro", "exam-level"])
@@ -187,6 +197,7 @@ if st.button("Generate flashcards", disabled=not source_text):
                 "covered": result.covered,
                 "auto": auto_mode,
                 "card_count": len(result.cards),
+                "cap_limited": result.cap_limited,
             }
             st.session_state["run_stats"] = format_run_stats(result)
             # The editor must keep the same input between reruns. Passing it its own
@@ -203,13 +214,21 @@ if "cards_editor_input" in st.session_state:
         topics, covered = coverage["topics"], coverage["covered"]
         n_covered = sum(topic in covered for topic in topics)
         if n_covered < len(topics):
-            if coverage["auto"]:
-                st.warning(f"Covered {n_covered} of {len(topics)} topics.")
-            else:
+            # The cap message is Auto-only: in Custom, more topics than the slider value
+            # also sets cap_limited, and there switching to Auto is the useful advice.
+            if coverage["auto"] and coverage.get("cap_limited"):
+                st.warning(
+                    f"Covered {n_covered} of {len(topics)} topics "
+                    f"(limit of {MAX_AUTO_CARDS} cards per request)."
+                )
+            elif not coverage["auto"]:
+                reach = "all" if len(topics) <= MAX_AUTO_CARDS else f"up to {MAX_AUTO_CARDS}"
                 st.warning(
                     f"Found {len(topics)} topics; {coverage['card_count']} cards cover "
-                    f"{n_covered} of them. Switch to Auto to cover all."
+                    f"{n_covered} of them. Switch to Auto to cover {reach}."
                 )
+            else:  # Auto mode under the cap: a follow-up request failed.
+                st.warning(f"Covered {n_covered} of {len(topics)} topics.")
         with st.expander(f"Topics found ({len(topics)})"):
             st.markdown(
                 "  \n".join(

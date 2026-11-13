@@ -22,10 +22,14 @@ MAX_PARALLEL_REQUESTS = 8
 # Haiku 5.5 prices in USD per million tokens, used for the cost estimate.
 INPUT_PRICE_PER_M = 0.10
 OUTPUT_PRICE_PER_M = 0.50
-MAX_OUTPUT_TOKENS = 16000
+# A one-chunk document can get all MAX_AUTO_CARDS cards in one reply: 80 cards at up to
+# ~300 output tokens each (thinking included), plus the topics list, plus headroom.
+# You pay only for tokens actually generated, so a higher cap costs nothing extra.
+MAX_OUTPUT_TOKENS = 32000
 REQUEST_TIMEOUT_SECONDS = 120.0
 MAX_INSTRUCTION_CHARS = 500  # Keeps custom instructions short and cheap.
-MAX_CARDS = 40  # Spend cap: total cards per request, in both modes.
+MAX_CARDS = 40  # Spend cap per request in Custom mode (the slider maximum).
+MAX_AUTO_CARDS = 80  # Spend cap per request in Auto mode, split across chunks.
 
 DIFFICULTY_GUIDANCE = {
     "intro": "Intro level: test core ideas for a student meeting this material for the first time.",
@@ -153,6 +157,7 @@ class GenerationResult:
     warnings: list[str]
     topics: list[str]  # merged across chunks, in document order
     covered: set[str]  # topics with at least one card
+    cap_limited: bool  # True when there were more topics than the run's card target
     chunk_count: int
     total_seconds: float  # wall-clock time for the whole run
     input_tokens: int
@@ -201,12 +206,15 @@ def _call_claude(
 ) -> tuple[str, anthropic.types.Usage]:
     """Send one request and return the response's text and token usage."""
     try:
-        response = client.messages.create(
+        # Streamed so long replies don't time out: the 120s timeout then applies to gaps
+        # between streamed events, not to the whole reply. Only the final message is used.
+        with client.messages.stream(
             model=MODEL,
             max_tokens=MAX_OUTPUT_TOKENS,
             system=SYSTEM_PROMPT,
             messages=messages,
-        )
+        ) as stream:
+            response = stream.get_final_message()
     except anthropic.AuthenticationError as error:
         raise CardGenerationError("The Anthropic API key was rejected. Check that it's correct.") from error
     except anthropic.RateLimitError as error:
@@ -483,7 +491,7 @@ def generate_cards(
 ) -> GenerationResult:
     """Generate flashcards from text of any length.
 
-    In Auto mode, writes one card per topic, up to MAX_CARDS. Otherwise writes about
+    In Auto mode, writes one card per topic, up to MAX_AUTO_CARDS. Otherwise writes about
     n_cards. Splits the text into chunks, generates cards for the chunks in parallel,
     then merges cards and topics in document order and drops duplicates.
     on_progress(done, total, chunk_cards) is called from this (the caller's) thread as
@@ -506,7 +514,7 @@ def generate_cards(
     custom_instructions = custom_instructions.strip()[:MAX_INSTRUCTION_CHARS]
 
     client = anthropic.Anthropic(api_key=_get_api_key(), timeout=REQUEST_TIMEOUT_SECONDS)
-    target = MAX_CARDS if auto else min(n_cards, MAX_CARDS)
+    target = MAX_AUTO_CARDS if auto else min(n_cards, MAX_CARDS)
     budgets = allocate_cards([len(chunk) for chunk in chunks], target)
     results: dict[int, ChunkResult] = {}
     tracker = UsageTracker()
@@ -565,6 +573,7 @@ def generate_cards(
     topics = merge_topics([result.topics for result in in_order])
     card_topic_keys = {_normalize(card.topic) for card in cards}
     covered = {topic for topic in topics if _normalize(topic) in card_topic_keys}
+    cap_limited = len(topics) > target  # More topics than this run's card target.
     records = tracker.records
     input_tokens = sum(record.input_tokens for record in records)
     output_tokens = sum(record.output_tokens for record in records)
@@ -573,6 +582,7 @@ def generate_cards(
         warnings=warnings,
         topics=topics,
         covered=covered,
+        cap_limited=cap_limited,
         chunk_count=len(chunks),
         total_seconds=time.perf_counter() - start,
         input_tokens=input_tokens,
