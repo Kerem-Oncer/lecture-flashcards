@@ -59,18 +59,12 @@ Custom instructions:
 - If the instructions narrow the focus, `topics` should list only the matching topics.
 - If the instructions narrow the focus and this part of the notes has little or nothing relevant, return fewer cards, or empty lists ({"topics": [], "cards": []}), rather than inventing content.
 
-Output only a single-line, minified JSON object (no indentation, no line breaks, no spaces after colons or commas), with no commentary and no code fences, in exactly this shape:
-{"topics":["..."],"cards":[{"front":"...","back":"...","card_type":"definition","source_quote":"...","topic":"..."}]}"""
-
-# Whitespace in JSON is billed as output tokens, so every reply is asked to be minified.
-MINIFIED_JSON = (
-    "single-line, minified JSON (no indentation, no line breaks, no spaces after colons "
-    "or commas), with no commentary and no code fences"
-)
+Output only a JSON object in exactly this shape, with no commentary and no code fences:
+{"topics": ["..."], "cards": [{"front": "...", "back": "...", "card_type": "definition", "source_quote": "...", "topic": "..."}]}"""
 
 FOLLOW_UP_PROMPT = (
     "These topics have no card yet: {missing}. Write one card for each. "
-    f'Respond with {MINIFIED_JSON}, in the shape {{{{"cards":[...]}}}} using the same card fields.'
+    'Respond with JSON {{"cards": [...]}} using the same card fields.'
 )
 
 
@@ -399,7 +393,7 @@ def _request_card_set(
                 "role": "user",
                 "content": (
                     f"That response failed validation:\n{first_error}\n\n"
-                    f"Send only the corrected JSON object, as {MINIFIED_JSON}."
+                    "Send the corrected JSON object only."
                 ),
             }
         )

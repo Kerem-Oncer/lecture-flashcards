@@ -89,7 +89,7 @@ def test_card_with_unlisted_topic_fails_validation_and_retries(fake_claude):
     retry_message = fake.calls[1][-1]["content"]
     assert "failed validation" in retry_message
     assert "Bogus" in retry_message
-    assert "minified JSON" in retry_message
+    assert "Send the corrected JSON object only." in retry_message
     assert [c.topic for c in result.cards] == ["TCP"]
 
 
@@ -107,7 +107,7 @@ def test_missing_topics_trigger_one_follow_up_and_cards_are_added(fake_claude):
     assert len(fake.calls) == 2
     follow_up = fake.calls[1][-1]["content"]
     assert "Meiosis" in follow_up and "Osmosis" in follow_up and "Mitosis" not in follow_up
-    assert "minified JSON" in follow_up and '{"cards":[...]}' in follow_up
+    assert '{"cards": [...]}' in follow_up
     assert [c.topic for c in result.cards] == topics
     assert result.covered == set(topics)
     assert not result.cap_limited  # 3 topics < 80 cards.
