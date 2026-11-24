@@ -214,12 +214,12 @@ def _call_claude(
     except anthropic.RateLimitError as error:
         raise CardGenerationError("Rate limit reached. Wait a minute and try again.") from error
     except anthropic.APIStatusError as error:
-        raise CardGenerationError(f"Claude API error ({error.status_code}): {error.message}") from error
+        raise CardGenerationError(f"Card generation service error ({error.status_code}): {error.message}") from error
     except anthropic.APIConnectionError as error:
-        raise CardGenerationError("Could not reach the Claude API. Check your connection.") from error
+        raise CardGenerationError("Could not reach the card generation service. Check your connection.") from error
 
     if response.stop_reason == "refusal":
-        raise CardGenerationError("Claude declined to generate cards from this text.")
+        raise CardGenerationError("Cards could not be generated from this text.")
 
     # The response can also include thinking blocks, so keep only the text.
     text = "".join(block.text for block in response.content if block.type == "text")
@@ -402,7 +402,7 @@ def _request_card_set(
             return _parse_card_set(raw, allow_empty), raw
         except ValueError as second_error:
             raise InvalidCardsError(
-                f"Claude returned invalid cards twice. Last error: {second_error}"
+                f"The generated cards were invalid twice. Last error: {second_error}"
             ) from second_error
 
 
@@ -548,7 +548,7 @@ def generate_cards(
             raise
 
     if failed == len(chunks):
-        raise CardGenerationError("Claude returned invalid cards for every chunk. Try again.")
+        raise CardGenerationError("The generated cards were invalid for every chunk. Try again.")
     if failed:
         warnings.append(f"{failed} of {len(chunks)} chunks returned invalid cards and were skipped.")
 

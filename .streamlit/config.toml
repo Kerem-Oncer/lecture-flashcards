@@ -1,0 +1,56 @@
+# "Study desk" theme: warm paper surfaces, an indigo accent, and a serif display font
+# for headings. Light and dark sections keep the appearance toggle in the app menu.
+
+[theme]
+font = "'Inter':https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+headingFont = "'Fraunces':https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap"
+codeFont = "'JetBrains Mono':https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap"
+baseFontSize = 15
+headingFontSizes = ["2.6rem", "1.75rem", "1.3rem", "1.1rem", "1rem", "0.9rem"]
+headingFontWeights = [700, 600, 600, 600, 600, 600]
+baseRadius = "10px"
+buttonRadius = "10px"
+showWidgetBorder = true
+showSidebarBorder = true
+linkUnderline = false
+
+[theme.light]
+primaryColor = "#4F46E5"
+backgroundColor = "#FCFBF8"
+secondaryBackgroundColor = "#F3F1EC"
+textColor = "#1C1B22"
+linkColor = "#4338CA"
+borderColor = "#E4E0D7"
+codeBackgroundColor = "#F0EEE8"
+codeTextColor = "#3730A3"
+violetColor = "#6D28D9"
+dataframeBorderColor = "#E4E0D7"
+dataframeHeaderBackgroundColor = "#F3F1EC"
+
+[theme.dark]
+primaryColor = "#818CF8"
+backgroundColor = "#121118"
+secondaryBackgroundColor = "#1C1B25"
+textColor = "#ECEAF4"
+linkColor = "#A5B4FC"
+borderColor = "#2D2B3A"
+codeBackgroundColor = "#24222F"
+codeTextColor = "#C7D2FE"
+violetColor = "#A78BFA"
+dataframeBorderColor = "#2D2B3A"
+dataframeHeaderBackgroundColor = "#1C1B25"
+dataframeHeaderTextColor = "#ECEAF4"
+
+[theme.light.sidebar]
+backgroundColor = "#F5F3EE"
+secondaryBackgroundColor = "#FCFBF8"
+textColor = "#1C1B22"
+borderColor = "#E4E0D7"
+primaryColor = "#4F46E5"
+
+[theme.dark.sidebar]
+backgroundColor = "#0D0C12"
+secondaryBackgroundColor = "#1C1B25"
+textColor = "#ECEAF4"
+borderColor = "#2D2B3A"
+primaryColor = "#818CF8"
