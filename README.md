@@ -33,14 +33,6 @@ Turn messy lecture notes, PDFs, and YouTube transcripts into source-grounded fla
 - **HST 102 (19 slides), Auto mode:** balancing chunk sizes and running them in parallel cut generation time from 41 s to 25.7 s.
 - **CSE 220 (28 pages, 8,883 characters):** content from the second half of the document is now covered; the original 6,000-character limit dropped it.
 
-## Limitations and next steps
-
-- No OCR, so scanned slides can't be read.
-- Notes are limited to about 60,000 characters; anything beyond that is not used.
-- Card types are sometimes mislabeled.
-- Source quotes can be very short.
-- **Next steps:** verify each source quote against the notes in code, and add spaced repetition.
-
 ## Run locally
 
 Requires Python 3.10+ and an [Anthropic API key](https://platform.claude.com/).
