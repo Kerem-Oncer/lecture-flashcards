@@ -4,7 +4,7 @@ Turn messy lecture notes, PDFs, and YouTube transcripts into source-grounded fla
 
 **Live demo:** [Open the app](https://lecture-flashcards-ckr8hemndpmqnbx5tvz2eo.streamlit.app/)
 
-![Study view: a generated HST 102 flashcard with flip, shuffle and keyboard navigation, and the sidebar with Auto mode and custom instructions](docs/screenshot.png)
+![Study view: a generated HST 102 deck with card and topic-coverage stats, a flip card with shuffle and keyboard navigation, and the deck settings sidebar](docs/screenshot.png)
 
 **Built with:** Python, Streamlit, Claude API, pydantic, pypdf, genanki, pandas, pytest
 
